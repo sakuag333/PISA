@@ -1,0 +1,597 @@
+#include<iostream>
+#include<map>
+#include<cmath>
+#include<queue>
+#include<cstring>
+#include "fileread.cpp"
+using namespace std;
+
+class node
+{
+public:
+node *left,*next,*parent;
+int ts,seq_id;
+string label;
+};
+
+class ps_tree
+{
+public:
+node *root;
+map<string,bool> mp;
+map<string,int> frequency;
+map<pair<string,pair<string,int> >,bool> pattern;
+
+ps_tree()
+{
+mp.clear();
+root=0;
+}
+
+node* initialize()
+{
+node *t=new node();
+t->parent=0;
+t->left=0;
+t->next=0;
+root=t;
+return root;
+}
+
+void create(string lbl,int time,int seq,node *par)
+{
+node *t=new node();
+t->left=0;
+t->next=0;
+t->parent=par;
+t->label=lbl;
+t->ts=time;
+t->seq_id=seq;
+if(par->left==0)
+par->left=t;
+else
+{
+node *mv=par->left;
+while(mv->next!=0)
+mv=mv->next;
+mv->next=t;
+}
+}
+
+void delete_node(node *curr,node *par)
+{
+if(par->left==curr)
+par->left=curr->next;
+else
+{
+node *mv=par->left;
+while(mv->next!=curr)
+mv=mv->next;
+mv->next=curr->next;
+}
+}
+
+bool path_root(node *curr,string s,string t)
+{
+if(curr==root)
+{
+string k="";
+for(int i=t.length()-1;i>=0;i--)
+k+=t[i];
+if(k.find(s)==string::npos)
+return false;
+return true;
+}
+string y=curr->label;
+for(int i=y.length()-1;i>=0;i--)
+t+=y[i];
+return path_root(curr->parent,s,t);
+}
+
+
+void comb(string a,string store[],int &cnt,string t,int l)
+{
+if(l==0)
+mp.clear();
+if(l==a.length())
+{
+if(mp[t] || t.length()==0)
+return;
+mp[t]=true;
+store[cnt]=t;
+cnt++;
+return;
+}
+string k1=t;
+k1+=a[l];
+comb(a,store,cnt,k1,l+1);
+comb(a,store,cnt,t,l+1);
+}
+
+node* search_level(node *par,string s,int seqid)
+{
+node *mv=par->left;
+while(mv!=0)
+{
+if(mv->label==s && mv->seq_id==seqid)
+return mv;
+mv=mv->next;
+}
+return 0;
+}
+
+
+void update_root(string store[],int cnt,int seq_id,int curr_time)
+{
+node *tmp;
+for(int i=0;i<cnt;i++)
+{
+//tmp=search_level(root,store[i],seq_id);
+//if(tmp!=0)
+//{
+//tmp->ts=curr_time;
+//}
+//else
+//{
+//if(!is_present_item_on_root(store[i]))
+create(store[i],curr_time,seq_id,root);
+//}
+}
+}
+
+
+void f(int curr_time,string items[],int seq,int poi)
+{
+int cnt;
+string store[100];
+string t;
+for(int i=0;i<seq;i++)
+{
+//cout<<i<<" "<<seq<<" "<<items[i]<<endl;
+if(items[i].length()==0)
+continue;
+cnt=0;
+t="";
+comb(items[i],store,cnt,t,0);
+update_root(store,cnt,i+1,curr_time);
+}
+}
+
+
+void g(node *curr,int curr_time,string items[],int seq,int poi)
+{
+if(curr->ts<=curr_time-poi)
+{
+delete_node(curr,curr->parent);
+return;
+}
+if(items[curr->seq_id-1].length()==0)
+return;
+string k=items[(curr->seq_id)-1];
+string store[100];
+int cnt=0;
+string t="";
+comb(k,store,cnt,t,0);
+for(int i=0;i<cnt;i++)
+{
+t="";
+/*=============================*/
+if(path_root(curr,store[i],t))
+continue;
+//cout<<curr->label<<" "<<store[i]<<endl;
+//node *tmp=search_level(curr,store[i],curr->seq_id);
+//if(tmp==0)
+/********************/
+create(store[i],curr_time,curr->seq_id,curr);
+//else
+//tmp->ts=curr_time;
+}
+}
+
+void main_func(node *curr,int curr_time,string items[],int seq,int poi)
+{
+if(curr==root)
+f(curr_time,items,seq,poi);
+else
+g(curr,curr_time,items,seq,poi);
+}
+
+void traverse(node *curr,int curr_time,string items[],int seq,int poi)
+{
+if(curr==0)
+return;
+node *mv=curr->left;
+while(mv!=0)
+{
+traverse(mv,curr_time,items,seq,poi);
+mv=mv->next;
+}
+main_func(curr,curr_time,items,seq,poi);
+}
+
+string to_string(int f)
+{
+string h="";
+char x;
+while(f>0)
+{
+x='0'+(f%10);
+h=h+x;
+f/=10;
+}
+return h;
+}
+
+void comb2(string label,string store[],int &cnt)
+{
+int t_cnt=cnt;
+for(int i=0;i<t_cnt;i++)
+{
+store[cnt]=store[i]+label;
+cnt++;
+}
+store[cnt]=label;
+cnt++;
+}
+
+void calc_support(node *curr,string k,string time_str)
+{
+if(curr==0)
+return;
+if(curr==root)
+{
+pattern.clear();
+frequency.clear();
+}
+if(!pattern[make_pair(k,make_pair(time_str,curr->seq_id))])
+{
+frequency[k]++;
+pattern[make_pair(k,make_pair(time_str,curr->seq_id))]=true;
+}
+
+node *mv=curr->left;
+while(mv!=0)
+{
+string store[1000];
+int cnt=0;
+string t="";
+comb2(mv->label,store,cnt);
+//comb(mv->label,store,cnt,t,0);
+//store[cnt]="";
+//cnt++;
+for(int i=0;i<cnt;i++)
+{
+string h=k;
+h=h+store[i];
+string b=time_str;
+string x=to_string(mv->ts);
+b+=x;
+calc_support(mv,h,b);
+}
+mv=mv->next;
+}
+}
+
+void print(node *curr)
+{
+if(curr==0)
+return;
+cout<<curr->label<<" "<<curr->ts<<" "<<curr->seq_id<<endl;
+node *mv=curr->left;
+while(mv!=0)
+{
+print(mv);
+mv=mv->next;
+}
+}
+
+void print_level_order()
+{
+queue<pair<node *,int> > q;
+q.push(make_pair(root,0));
+pair<node*,int> pr;
+node *mv;
+while(!q.empty())
+{
+pr=q.front();
+q.pop();
+cout<<pr.second<<" : "<<(pr.first)->label<<" "<<(pr.first)->seq_id<<" "<<(pr.first)->ts<<endl;
+mv=(pr.first)->left;
+while(mv!=0)
+{
+q.push(make_pair(mv,1+pr.second));
+mv=mv->next;
+}
+}
+}
+
+};
+
+bool parse_token(string token,int &num_token,char &token_char)
+{
+int curr=0;
+num_token=0;
+while(token[curr]-'0'>=0 && token[curr]-'0'<=9 && curr<token.length())
+{
+num_token=10*num_token+(token[curr]-'0');
+curr++;
+}
+if(curr==token.length())
+return false;
+token_char=token[curr];
+return true;
+}
+
+int d_factor_inverse(int frequency,int d_factor)
+{
+/*Function to be decided to inverse the effect of d_factor*/
+return frequency;
+}
+
+map<pair<int,char>,bool> check_mapping;
+map<pair<int,char>,char> mapping;
+map<char,pair<int,char> > rev_mapping;
+int token_count=97;
+
+char f_mapping(int num_token,char token_char)
+{
+if(check_mapping[make_pair(num_token,token_char)])
+return mapping[make_pair(num_token,token_char)];
+check_mapping[make_pair(num_token,token_char)]=true;
+char x=token_count;
+mapping[make_pair(num_token,token_char)]=x;
+rev_mapping[x]=make_pair(num_token,token_char);
+//cout<<num_token<<" "<<token_char<<" "<<x<<endl;
+token_count++;
+return x;
+}
+
+int main()
+{
+ps_tree p1;
+node *r=p1.initialize();
+int seq=6,poi=5,max_time=5,min_len=1,d_factor=1;
+double min_support=0.5;
+string str,token,const_token;
+int num_token;
+char token_char;
+float t1,t2;
+bool is_valid_input;
+string cur_timestamp_xac[3301][16];
+
+
+
+
+
+/*Input Configuration Parameters*/
+
+d_factor=1;
+//seq=3200;
+//max_time=15;
+//poi=3;
+seq=4;
+max_time=5;
+poi=4;
+min_len=1;
+//min_support=0.05;
+min_support=0;
+
+
+
+
+
+/*timestamp x sequence_id*/
+string items[max_time+1][seq+1];
+
+read_file(cur_timestamp_xac);
+
+for(int i=0;i<seq;i++)
+{
+for(int j=0;j<max_time;j++)
+{
+cin>>str;
+//str=cur_timestamp_xac[i][j];
+token="";
+const_token="";
+
+for(int k=0;k<str.length();k++)
+{
+if(str[k]==',')
+{
+if(token.length()>0)
+{
+is_valid_input=parse_token(token,num_token,token_char);
+if(!is_valid_input)
+{
+cout<<"Input Invalid"<<endl;
+return 0;
+}
+//for(int q=0;q<ceil(num_token/d_factor);q++)
+//const_token+=(token_char);
+t1=num_token;
+t2=d_factor;
+const_token+=f_mapping(ceil(t1/t2),token_char);
+token="";
+}
+}
+else
+token+=str[k]; 
+}
+
+if(token.length()>0)
+{
+parse_token(token,num_token,token_char);
+//for(int q=0;q<ceil(num_token/d_factor);q++)
+//const_token+=token_char;
+t1=num_token;
+t2=d_factor;
+const_token+=f_mapping(ceil(t1/t2),token_char);
+}
+
+items[j][i]=const_token;
+//cout<<i<<" "<<j<<" "<<const_token<<endl;
+}
+}
+
+
+
+
+/*Print items*/
+/*
+for(int i=0;i<max_time;i++)
+{
+for(int j=0;j<seq;j++)
+{
+cout<<i<<" "<<j<<" ";
+for(int k=0;k<items[i][j].length();k++)
+cout<<rev_mapping[items[i][j][k]].first<<rev_mapping[items[i][j][k]].second<<" ";
+cout<<endl;
+}
+}*/
+/*
+items[0][0]="A";
+items[0][1]="AD";
+items[0][2]="A";
+items[0][3]="";
+items[0][4]="";
+items[0][5]="";
+
+items[1][0]="B";
+items[1][1]="B";
+items[1][2]="BC";
+items[1][3]="D";
+items[1][4]="";
+items[1][5]="";
+
+items[2][0]="";
+items[2][1]="";
+items[2][2]="B";
+items[2][3]="C";
+items[2][4]="D";
+items[2][5]="";
+
+items[3][0]="C";
+items[3][1]="A";
+items[3][2]="C";
+items[3][3]="";
+items[3][4]="B";
+items[3][5]="";
+
+items[4][0]="AD";
+items[4][1]="";
+items[4][2]="";
+items[4][3]="A";
+items[4][4]="A";
+items[4][5]="";
+
+items[5][0]="";
+items[5][1]="";
+items[5][2]="A";
+items[5][3]="";
+items[5][4]="";
+items[5][5]="";
+*/
+
+/*Unit tesst create/delete_node/initiallize/search_level*/
+/*
+p1.create("rt",12,1,r);
+p1.create("rt",122,1,r);
+p1.create("rt",12,21,r);
+p1.create("rt",12,122,r);
+p1.create("rnnt",12,1,r->left);
+p1.create("rkkt",12,1,r->left->next);
+p1.create("rklt",12,1,r);
+node*k=p1.search_level(r,"rklt",21);
+if(k==0)
+cout<<"dd"<<endl;
+else
+cout<<k->label<<endl;
+p1.delete_node(r->left->next,r);
+p1.print(r);
+*/
+
+/*Unit test comb*/
+/*string store[1000];
+int cnt=0;
+string a="ABB";
+string t="";
+p1.comb(a,store,cnt,t,0);
+for(int i=0;i<cnt;i++)
+{
+cout<<store[i]<<endl;
+}*/
+
+/*Unit test path_root*/
+/*
+p1.create("A",1,1,r);
+p1.create("BC",1,1,r->left);
+p1.create("DEF",1,1,r->left->left);
+p1.print(r);
+string t="";
+cout<<p1.path_root(r->left->left->left,"ABCDEF",t)<<endl;
+*/
+
+/*Unit test main_func/f/update_root*/
+/*
+for(int curr_time=1;curr_time<=1;curr_time++)
+{
+p1.traverse(r,curr_time,items[curr_time-1],seq,poi);
+}
+p1.print(r);
+*/
+
+/*Main testing*/
+
+for(int curr_time=1;curr_time<=max_time;curr_time++)
+{
+p1.traverse(r,curr_time,items[curr_time-1],seq,poi);
+
+//p1.print_level_order();
+
+string m="";
+string n="";
+p1.calc_support(r,m,n);
+
+vector<pair<string,int> > freq_pattern;
+
+for(map<string,int>::iterator it=(p1.frequency).begin();it!=(p1.frequency).end();it++)
+{
+/*if(curr_time==2)
+{
+for(int i=0;i<((*it).first).length();i++)
+cout<<rev_mapping[((*it).first)[i]].first<<rev_mapping[((*it).first)[i]].second<<" ";
+cout<<" "<<(*it).second<<endl;
+}*/
+
+if(((double)((*it).second))/seq>=min_support)
+{
+freq_pattern.push_back(make_pair((*it).first,(*it).second));
+}
+}
+
+int count_pat=0;
+cout<<endl<<endl<<"Frequent Patterns for Timestamp t = "<<curr_time<<" are :"<<endl<<endl;
+
+for(int i=0;i<freq_pattern.size();i++)
+{
+if(freq_pattern[i].first.length()>=min_len)
+{
+count_pat++;
+for(int h=0;h<(freq_pattern[i].first).length();h++)
+cout<<rev_mapping[(freq_pattern[i].first)[h]].first<<rev_mapping[(freq_pattern[i].first)[h]].second<<" ";
+cout<<" "<<d_factor_inverse(freq_pattern[i].second,d_factor)<<endl;
+//cout<<freq_pattern[i].first<<" "<<d_factor_inverse(freq_pattern[i].second)<<endl;
+}
+}
+
+cout<<endl;
+cout<<count_pat<<endl;
+}
+return 0;
+}
+
+/*
+Sample Test case
+1A,2B 2B 2C
+3B 2A 4B
+*/
